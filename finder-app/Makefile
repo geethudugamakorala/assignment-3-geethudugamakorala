@@ -1,6 +1,3 @@
-# Makefile for writer application
-
-# Compiler flags for better code quality
 CFLAGS := -Wall -Werror
 
 # Default target
