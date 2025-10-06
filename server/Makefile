@@ -1,15 +1,22 @@
-CC ?= gcc
-CFLAGS := -Wall -Werror -g
-LDFLAGS := 
+CC ?= $(CROSS_COMPILE)gcc
+CFLAGS ?= -g -Wall -Werror
+SRCDIR = .
+SRC = aesdsocket.c
+TARGET = aesdsocket
+LDFLAGS ?= -pthread
+OBJS := $(SRC:.c=.o)
 
-# Default target
-all: aesdsocket
-default: aesdsocket
+all: $(TARGET)
 
-aesdsocket: aesdsocket.c
-	$(CC) $(CFLAGS) -o aesdsocket aesdsocket.c $(LDFLAGS)
+$(TARGET) : $(OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) $(OBJS) -o $(TARGET) $(LDFLAGS)
+
+%.o : $(SRCDIR)/%.c
+	@if [ ! -f $< ]; then \
+	echo "Error: Source file $< not found"; \
+	exit 1; \
+	fi
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f aesdsocket *.o
-
-.PHONY: all default clean
+	rm -f $(TARGET) *.o *.elf *.map
