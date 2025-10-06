@@ -1,16 +1,13 @@
+CC ?= gcc
 CFLAGS := -Wall -Werror
 
 # Default target
 all: writer
 
 writer: writer.c
-ifdef CROSS_COMPILE
-	$(CROSS_COMPILE)gcc $(CFLAGS) -o writer writer.c
-else
-	gcc $(CFLAGS) -o writer writer.c
-endif
+$(CC) $(CFLAGS) -o writer writer.c
 
 clean:
-	rm -f writer *.o
+rm -f writer *.o
 
 .PHONY: all clean
