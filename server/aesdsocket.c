@@ -24,9 +24,7 @@ volatile sig_atomic_t stop_requested = 0;
 int server_fd = -1;
 int client_fd = -1;
 
-/**
- * Signal handler for SIGINT and SIGTERM
- */
+// Signal handler for SIGINT and SIGTERM
 void signal_handler(int signo) {
     if (signo == SIGINT || signo == SIGTERM) {
         syslog(LOG_INFO, "Caught signal, exiting");
@@ -34,9 +32,7 @@ void signal_handler(int signo) {
     }
 }
 
-/**
- * Get client IP address as string
- */
+// Get client IP address as string
 int get_client_ip(struct sockaddr_storage *client_addr, char *ip_str, size_t ip_str_len) {
     void *addr;
     
@@ -57,9 +53,7 @@ int get_client_ip(struct sockaddr_storage *client_addr, char *ip_str, size_t ip_
     return 0;
 }
 
-/**
- * Cleanup function
- */
+// Cleanup resources
 void cleanup() {
     if (client_fd != -1) {
         close(client_fd);
@@ -71,9 +65,7 @@ void cleanup() {
     closelog();
 }
 
-/**
- * Setup signal handlers
- */
+// Setup signal handlers for graceful shutdown
 int setup_signal_handlers() {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -92,18 +84,16 @@ int setup_signal_handlers() {
     return 0;
 }
 
-/**
- * Create and bind socket
- */
+// Create and bind socket
 int create_socket() {
     struct addrinfo hints, *res;
     int sockfd;
     int optval = 1;
     
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6
-    hints.ai_socktype = SOCK_STREAM; // TCP stream socket
-    hints.ai_flags = AI_PASSIVE;     // Fill in my IP for me
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
     
     int status = getaddrinfo(NULL, PORT, &hints, &res);
     if (status != 0) {
@@ -153,7 +143,6 @@ int receive_and_append_data(int client_fd) {
         return -1;
     }
     
-    // Receive data until newline
     while (!found_newline && !stop_requested) {
         bytes_received = recv(client_fd, buffer, BUFFER_SIZE, 0);
         if (bytes_received <= 0) {
@@ -166,14 +155,12 @@ int receive_and_append_data(int client_fd) {
             return -1;
         }
         
-        // Write to file
         if (write(data_fd, buffer, bytes_received) != bytes_received) {
             syslog(LOG_ERR, "write to file failed: %s", strerror(errno));
             close(data_fd);
             return -1;
         }
         
-        // Check for newline
         if (memchr(buffer, '\n', bytes_received) != NULL) {
             found_newline = 1;
         }
@@ -183,9 +170,7 @@ int receive_and_append_data(int client_fd) {
     return found_newline ? 0 : -1;
 }
 
-/**
- * Send file contents to client
- */
+// Send file contents to client
 int send_file_contents(int client_fd) {
     int data_fd;
     char buffer[BUFFER_SIZE];
@@ -260,27 +245,22 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         if (pid > 0) {
-            // Parent process exits
             cleanup();
             return 0;
         }
         
-        // Child process continues as daemon
-        // Create a new session
         if (setsid() < 0) {
             syslog(LOG_ERR, "setsid failed: %s", strerror(errno));
             cleanup();
             return -1;
         }
         
-        // Change working directory to root
         if (chdir("/") < 0) {
             syslog(LOG_ERR, "chdir failed: %s", strerror(errno));
             cleanup();
             return -1;
         }
         
-        // Redirect standard file descriptors to /dev/null
         int null_fd = open("/dev/null", O_RDWR);
         if (null_fd >= 0) {
             dup2(null_fd, STDIN_FILENO);
@@ -292,7 +272,6 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    // Listen for connections
     if (listen(server_fd, 5) == -1) {
         syslog(LOG_ERR, "listen failed: %s", strerror(errno));
         cleanup();
@@ -301,7 +280,6 @@ int main(int argc, char *argv[]) {
     
     syslog(LOG_INFO, "Server listening on port %s", PORT);
     
-    // Main server loop
     while (!stop_requested) {
         client_addr_len = sizeof(client_addr);
         
@@ -314,7 +292,6 @@ int main(int argc, char *argv[]) {
             continue;
         }
         
-        // Get client IP address
         if (get_client_ip(&client_addr, client_ip, sizeof(client_ip)) == -1) {
             syslog(LOG_ERR, "Failed to get client IP address");
             close(client_fd);
@@ -324,9 +301,7 @@ int main(int argc, char *argv[]) {
         
         syslog(LOG_INFO, "Accepted connection from %s", client_ip);
         
-        // Receive data and append to file
         if (receive_and_append_data(client_fd) == 0) {
-            // Send file contents back to client
             if (send_file_contents(client_fd) == -1) {
                 syslog(LOG_ERR, "Failed to send file contents to client");
             }
